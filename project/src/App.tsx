@@ -8,6 +8,7 @@ import Header from './components/Header';
 import AdminPanel from './components/admin/AdminPanel';
 import UserPanel from './components/user/UserPanel';
 import StatusModal from './components/StatusModal';
+import AdminSetup from './components/AdminSetup';
 
 function App() {
   const { user, loading, signOut } = useAuth();
@@ -132,7 +133,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <Header currentUser={user} onLogout={handleLogout} />
+      <Header currentUser={user as any} onLogout={handleLogout} />
       
       {user.user_metadata?.role === 'admin' ? (
         <AdminPanel
@@ -145,7 +146,7 @@ function App() {
         />
       ) : (
         <UserPanel
-          currentUser={user}
+          currentUser={user as any}
           userLeads={currentUserLeads}
           teamStats={teamStats}
           onUpdateStatus={handleUpdateStatus}
