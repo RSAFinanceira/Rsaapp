@@ -1,27 +1,36 @@
 import React, { useState } from 'react';
 import { Copy } from 'lucide-react';
-import { User } from '../types';
-import { users } from '../data/users';
+import { useAuth } from '../hooks/useAuth';
 
 interface LoginFormProps {
-  onLogin: (user: User) => void;
+  onLogin: (user: any) => void;
 }
 
 export default function LoginForm({ onLogin }: LoginFormProps) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('Rsa10@');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { signIn } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError('');
     
-    const user = users.find(u => u.username === username && u.password === password);
-    
-    if (user) {
-      onLogin(user);
-      setError('');
-    } else {
-      setError('Usuário ou senha incorretos!');
+    try {
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        setError('Email ou senha incorretos!');
+      } else {
+        // Login bem-sucedido será tratado pelo hook useAuth
+        onLogin({ email, username: email });
+      }
+    } catch (err) {
+      setError('Erro ao fazer login. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -59,15 +68,15 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
         <div className="bg-gray-800 border border-gray-600 rounded-lg p-5 mb-4">
           <form onSubmit={handleSubmit} className="space-y-4 max-w-xs mx-auto">
             <div>
-              <label htmlFor="username" className="block text-white text-sm mb-1">
-                Usuário
+              <label htmlFor="email" className="block text-white text-sm mb-1">
+                Email
               </label>
               <input
-                type="text"
-                id="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="(seu_usuario)"
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="seu@email.com"
                 className="w-full px-3 py-1.5 text-sm rounded bg-gray-900 border border-gray-700 text-white focus:outline-none focus:border-purple-600"
                 required
               />
@@ -106,9 +115,10 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
             
             <button
               type="submit"
-              className="w-full py-1.5 px-3 bg-[#6A0DAD] text-white font-semibold rounded-lg shadow-md hover:bg-purple-800 focus:outline-none text-sm"
+              disabled={loading}
+              className="w-full py-1.5 px-3 bg-[#6A0DAD] text-white font-semibold rounded-lg shadow-md hover:bg-purple-800 focus:outline-none text-sm disabled:opacity-50"
             >
-              Entrar
+              {loading ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
         </div>

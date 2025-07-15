@@ -1,8 +1,14 @@
 export interface User {
-  username: string;
-  password: string;
-  role: 'admin' | 'user';
-  name: string;
+  id?: string;
+  email?: string;
+  username?: string;
+  password?: string;
+  role?: 'admin' | 'user';
+  name?: string;
+  user_metadata?: {
+    role?: 'admin' | 'user';
+    name?: string;
+  };
 }
 
 export interface Lead {

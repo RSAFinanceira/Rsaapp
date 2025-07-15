@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Lead, User, TeamStats, UserLeads } from './types';
-import { users } from './data/users';
+import { Lead, TeamStats, UserLeads } from './types';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { showNotification } from './utils/notifications';
+import { useAuth } from './hooks/useAuth';
 import LoginForm from './components/LoginForm';
 import Header from './components/Header';
 import AdminPanel from './components/admin/AdminPanel';
@@ -10,7 +10,7 @@ import UserPanel from './components/user/UserPanel';
 import StatusModal from './components/StatusModal';
 
 function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const { user, loading, signOut } = useAuth();
   const [allLeads, setAllLeads] = useLocalStorage<Lead[]>('rsaLeads', []);
   const [userLeads, setUserLeads] = useLocalStorage<UserLeads>('rsaUserLeads', {});
   const [teamStats, setTeamStats] = useLocalStorage<TeamStats>('rsaTeamStats', {
@@ -71,18 +71,18 @@ function App() {
     return () => clearInterval(interval);
   }, [userLeads, setUserLeads]);
 
-  const handleLogin = (user: User) => {
-    setCurrentUser(user);
+  const handleLogin = (user: any) => {
+    // Login será tratado pelo hook useAuth
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
+  const handleLogout = async () => {
+    await signOut();
   };
 
   const handleUpdateStatus = (leadId: string, newStatus: Lead['status']) => {
-    if (!currentUser) return;
+    if (!user) return;
 
-    const username = currentUser.username;
+    const username = user.email || 'unknown';
     const updatedUserLeads = { ...userLeads };
     
     if (updatedUserLeads[username]) {
@@ -118,17 +118,23 @@ function App() {
     setSelectedLead(null);
   };
 
-  if (!currentUser) {
+  if (loading) {
+    return <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="text-white">Carregando...</div>
+    </div>;
+  }
+
+  if (!user) {
     return <LoginForm onLogin={handleLogin} />;
   }
 
-  const currentUserLeads = userLeads[currentUser.username] || [];
+  const currentUserLeads = userLeads[user.email || 'unknown'] || [];
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <Header currentUser={currentUser} onLogout={handleLogout} />
+      <Header currentUser={user} onLogout={handleLogout} />
       
-      {currentUser.role === 'admin' ? (
+      {user.user_metadata?.role === 'admin' ? (
         <AdminPanel
           allLeads={allLeads}
           setAllLeads={setAllLeads}
@@ -139,7 +145,7 @@ function App() {
         />
       ) : (
         <UserPanel
-          currentUser={currentUser}
+          currentUser={user}
           userLeads={currentUserLeads}
           teamStats={teamStats}
           onUpdateStatus={handleUpdateStatus}
