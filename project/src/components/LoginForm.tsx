@@ -7,11 +7,12 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ onLogin }: LoginFormProps) {
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState('admin@rsa.com');
   const [password, setPassword] = useState('Rsa10@');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
+  const { signIn, signUp } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +32,27 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
       setError('Erro ao fazer login. Tente novamente.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateAdmin = async () => {
+    setCreatingAdmin(true);
+    setError('');
+    
+    try {
+      const { error } = await signUp('admin@rsa.com', 'Rsa10@', 'Administrador RSA');
+      
+      if (error) {
+        setError(`Erro ao criar admin: ${(error as any).message}`);
+      } else {
+        setError('✅ Usuário admin criado! Agora você pode fazer login.');
+        setEmail('admin@rsa.com');
+        setPassword('Rsa10@');
+      }
+    } catch (err) {
+      setError('Erro inesperado ao criar admin.');
+    } finally {
+      setCreatingAdmin(false);
     }
   };
 
@@ -110,7 +132,11 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
             </div>
             
             {error && (
-              <div className="text-red-400 text-sm text-center">{error}</div>
+              <div className={`text-sm text-center p-2 rounded ${
+                error.includes('Erro') ? 'text-red-400 bg-red-900/20' : 'text-green-400 bg-green-900/20'
+              }`}>
+                {error}
+              </div>
             )}
             
             <button
@@ -119,6 +145,15 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
               className="w-full py-1.5 px-3 bg-[#6A0DAD] text-white font-semibold rounded-lg shadow-md hover:bg-purple-800 focus:outline-none text-sm disabled:opacity-50"
             >
               {loading ? 'Entrando...' : 'Entrar'}
+            </button>
+
+            <button
+              type="button"
+              onClick={handleCreateAdmin}
+              disabled={creatingAdmin}
+              className="w-full py-1.5 px-3 bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-700 focus:outline-none text-sm disabled:opacity-50"
+            >
+              {creatingAdmin ? 'Criando Admin...' : 'Criar Usuário Admin'}
             </button>
           </form>
         </div>
