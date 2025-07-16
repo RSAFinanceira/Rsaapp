@@ -1,58 +1,27 @@
 import React, { useState } from 'react';
 import { Copy } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { User } from '../types';
+import { users } from '../data/users';
 
 interface LoginFormProps {
-  onLogin: (user: any) => void;
+  onLogin: (user: User) => void;
 }
 
 export default function LoginForm({ onLogin }: LoginFormProps) {
-  const [email, setEmail] = useState('admin@rsa.com');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('Rsa10@');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [creatingAdmin, setCreatingAdmin] = useState(false);
-  const { signIn, signUp } = useAuth();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
     
-    try {
-      const { error } = await signIn(email, password);
-      
-      if (error) {
-        setError('Email ou senha incorretos!');
-      } else {
-        // Login bem-sucedido será tratado pelo hook useAuth
-        onLogin({ email, username: email });
-      }
-    } catch (err) {
-      setError('Erro ao fazer login. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateAdmin = async () => {
-    setCreatingAdmin(true);
-    setError('');
+    const user = users.find(u => u.username === username && u.password === password);
     
-    try {
-      const { error } = await signUp('admin@rsa.com', 'Rsa10@', 'Administrador RSA');
-      
-      if (error) {
-        setError(`Erro ao criar admin: ${(error as any).message}`);
-      } else {
-        setError('✅ Usuário admin criado! Agora você pode fazer login.');
-        setEmail('admin@rsa.com');
-        setPassword('Rsa10@');
-      }
-    } catch (err) {
-      setError('Erro inesperado ao criar admin.');
-    } finally {
-      setCreatingAdmin(false);
+    if (user) {
+      onLogin(user);
+      setError('');
+    } else {
+      setError('Usuário ou senha incorretos!');
     }
   };
 
@@ -90,15 +59,15 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
         <div className="bg-gray-800 border border-gray-600 rounded-lg p-5 mb-4">
           <form onSubmit={handleSubmit} className="space-y-4 max-w-xs mx-auto">
             <div>
-              <label htmlFor="email" className="block text-white text-sm mb-1">
-                Email
+              <label htmlFor="username" className="block text-white text-sm mb-1">
+                Usuário
               </label>
               <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="seu@email.com"
+                type="text"
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="(seu_usuario)"
                 className="w-full px-3 py-1.5 text-sm rounded bg-gray-900 border border-gray-700 text-white focus:outline-none focus:border-purple-600"
                 required
               />
@@ -132,28 +101,14 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
             </div>
             
             {error && (
-              <div className={`text-sm text-center p-2 rounded ${
-                error.includes('Erro') ? 'text-red-400 bg-red-900/20' : 'text-green-400 bg-green-900/20'
-              }`}>
-                {error}
-              </div>
+              <div className="text-red-400 text-sm text-center">{error}</div>
             )}
             
             <button
               type="submit"
-              disabled={loading}
-              className="w-full py-1.5 px-3 bg-[#6A0DAD] text-white font-semibold rounded-lg shadow-md hover:bg-purple-800 focus:outline-none text-sm disabled:opacity-50"
+              className="w-full py-1.5 px-3 bg-[#6A0DAD] text-white font-semibold rounded-lg shadow-md hover:bg-purple-800 focus:outline-none text-sm"
             >
-              {loading ? 'Entrando...' : 'Entrar'}
-            </button>
-
-            <button
-              type="button"
-              onClick={handleCreateAdmin}
-              disabled={creatingAdmin}
-              className="w-full py-1.5 px-3 bg-gray-600 text-white font-semibold rounded-lg shadow-md hover:bg-gray-700 focus:outline-none text-sm disabled:opacity-50"
-            >
-              {creatingAdmin ? 'Criando Admin...' : 'Criar Usuário Admin'}
+              Entrar
             </button>
           </form>
         </div>

@@ -1,17 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Lead, TeamStats, UserLeads } from './types';
+import { Lead, User, TeamStats, UserLeads } from './types';
+import { users } from './data/users';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { showNotification } from './utils/notifications';
-import { useAuth } from './hooks/useAuth';
 import LoginForm from './components/LoginForm';
 import Header from './components/Header';
 import AdminPanel from './components/admin/AdminPanel';
 import UserPanel from './components/user/UserPanel';
 import StatusModal from './components/StatusModal';
-import AdminSetup from './components/AdminSetup';
 
 function App() {
-  const { user, loading, signOut } = useAuth();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [allLeads, setAllLeads] = useLocalStorage<Lead[]>('rsaLeads', []);
   const [userLeads, setUserLeads] = useLocalStorage<UserLeads>('rsaUserLeads', {});
   const [teamStats, setTeamStats] = useLocalStorage<TeamStats>('rsaTeamStats', {
@@ -72,22 +71,22 @@ function App() {
     return () => clearInterval(interval);
   }, [userLeads, setUserLeads]);
 
-  const handleLogin = (user: any) => {
-    // Login será tratado pelo hook useAuth
+  const handleLogin = (user: User) => {
+    setCurrentUser(user);
   };
 
-  const handleLogout = async () => {
-    await signOut();
+  const handleLogout = () => {
+    setCurrentUser(null);
   };
 
   const handleUpdateStatus = (leadId: string, newStatus: Lead['status']) => {
-    if (!user) return;
+    if (!currentUser) return;
 
-    const username = user.email || 'unknown';
+    const username = currentUser.username;
     const updatedUserLeads = { ...userLeads };
     
     if (updatedUserLeads[username]) {
-      const leadIndex = updatedUserLeads[username].findIndex(l => l.id === leadId);
+      const leadIndex = updatedUserLeads[username].findIndex((l: Lead) => l.id === leadId);
       
       if (leadIndex !== -1) {
         const oldStatus = updatedUserLeads[username][leadIndex].status;
@@ -96,9 +95,13 @@ function App() {
         // Update team stats
         const updatedTeamStats = { ...teamStats };
         if (oldStatus !== 'completed' && newStatus === 'completed') {
-          updatedTeamStats[username].completed++;
+          if (updatedTeamStats[username]) {
+            updatedTeamStats[username].completed++;
+          }
         } else if (oldStatus === 'completed' && newStatus !== 'completed') {
-          updatedTeamStats[username].completed--;
+          if (updatedTeamStats[username]) {
+            updatedTeamStats[username].completed--;
+          }
         }
         
         setUserLeads(updatedUserLeads);
@@ -119,23 +122,17 @@ function App() {
     setSelectedLead(null);
   };
 
-  if (loading) {
-    return <div className="min-h-screen bg-black flex items-center justify-center">
-      <div className="text-white">Carregando...</div>
-    </div>;
-  }
-
-  if (!user) {
+  if (!currentUser) {
     return <LoginForm onLogin={handleLogin} />;
   }
 
-  const currentUserLeads = userLeads[user.email || 'unknown'] || [];
+  const currentUserLeads = userLeads[currentUser.username] || [];
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <Header currentUser={user as any} onLogout={handleLogout} />
+      <Header currentUser={currentUser} onLogout={handleLogout} />
       
-      {user.user_metadata?.role === 'admin' ? (
+      {currentUser.role === 'admin' ? (
         <AdminPanel
           allLeads={allLeads}
           setAllLeads={setAllLeads}
@@ -146,7 +143,7 @@ function App() {
         />
       ) : (
         <UserPanel
-          currentUser={user as any}
+          currentUser={currentUser}
           userLeads={currentUserLeads}
           teamStats={teamStats}
           onUpdateStatus={handleUpdateStatus}
