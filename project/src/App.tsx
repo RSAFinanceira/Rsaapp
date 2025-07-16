@@ -3,6 +3,8 @@ import { Lead, User, TeamStats, UserLeads } from './types';
 import { users } from './data/users';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { showNotification } from './utils/notifications';
+import { getUserLeadsFromSupabase, updateLeadStatus, getTeamStatsFromSupabase } from './utils/supabaseLeads';
+import { ensureDefaultUsers } from './utils/ensureDefaultUsers';
 import LoginForm from './components/LoginForm';
 import Header from './components/Header';
 import AdminPanel from './components/admin/AdminPanel';
@@ -14,15 +16,15 @@ function App() {
   const [allLeads, setAllLeads] = useLocalStorage<Lead[]>('rsaLeads', []);
   const [userLeads, setUserLeads] = useLocalStorage<UserLeads>('rsaUserLeads', {});
   const [teamStats, setTeamStats] = useLocalStorage<TeamStats>('rsaTeamStats', {
-    'barbarafolhari': { received: 0, completed: 0 },
-    'vanessasagioratto': { received: 0, completed: 0 },
-    'franreis': { received: 0, completed: 0 },
-    'monicathais': { received: 0, completed: 0 },
-    'jessicanolasco': { received: 0, completed: 0 },
-    'karinabaptista': { received: 0, completed: 0 },
-    'lucysilva': { received: 0, completed: 0 },
-    'rogeraugusto': { received: 0, completed: 0 },
-    'beatrizribeiro': { received: 0, completed: 0 }
+    'barbarafolhari': { received: 0, completed: 0, totalValue: 0 },
+    'vanessasagioratto': { received: 0, completed: 0, totalValue: 0 },
+    'franreis': { received: 0, completed: 0, totalValue: 0 },
+    'monicathais': { received: 0, completed: 0, totalValue: 0 },
+    'jessicanolasco': { received: 0, completed: 0, totalValue: 0 },
+    'karinabaptista': { received: 0, completed: 0, totalValue: 0 },
+    'lucysilva': { received: 0, completed: 0, totalValue: 0 },
+    'rogeraugusto': { received: 0, completed: 0, totalValue: 0 },
+    'beatrizribeiro': { received: 0, completed: 0, totalValue: 0 }
   });
 
   const [statusModalOpen, setStatusModalOpen] = useState(false);
@@ -71,15 +73,39 @@ function App() {
     return () => clearInterval(interval);
   }, [userLeads, setUserLeads]);
 
-  const handleLogin = (user: User) => {
+  useEffect(() => {
+    ensureDefaultUsers();
+  }, []);
+
+  const handleLogin = async (user: User) => {
     setCurrentUser(user);
+    
+    // Se for um usuário comum (não admin), carregar seus leads do Supabase
+    if (user.role === 'user') {
+      try {
+        const userLeadsFromSupabase = await getUserLeadsFromSupabase(user.username);
+        
+        // Atualizar o estado local com os leads do Supabase
+        const updatedUserLeads = { ...userLeads };
+        updatedUserLeads[user.username] = userLeadsFromSupabase;
+        setUserLeads(updatedUserLeads);
+        
+        // Carregar estatísticas da equipe do Supabase
+        const teamStatsFromSupabase = await getTeamStatsFromSupabase();
+        setTeamStats(teamStatsFromSupabase);
+        
+      } catch (error) {
+        console.error('Erro ao carregar leads do usuário:', error);
+        showNotification('Erro ao carregar dados do usuário', 'error');
+      }
+    }
   };
 
   const handleLogout = () => {
     setCurrentUser(null);
   };
 
-  const handleUpdateStatus = (leadId: string, newStatus: Lead['status']) => {
+  const handleUpdateStatus = async (leadId: string, newStatus: Lead['status']) => {
     if (!currentUser) return;
 
     const username = currentUser.username;
@@ -107,7 +133,13 @@ function App() {
         setUserLeads(updatedUserLeads);
         setTeamStats(updatedTeamStats);
         
-        showNotification('Status atualizado com sucesso!');
+        // Salvar no Supabase
+        const result = await updateLeadStatus(leadId, newStatus);
+        if (result.success) {
+          showNotification('Status atualizado com sucesso!');
+        } else {
+          showNotification(`Erro ao atualizar status: ${result.error}`, 'error');
+        }
       }
     }
   };

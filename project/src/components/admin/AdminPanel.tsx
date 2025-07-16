@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Lead, TeamStats, UserLeads } from '../../types';
+import { getTeamStatsFromSupabase } from '../../utils/supabaseLeads';
 import LeadDistribution from './LeadDistribution';
 import LeadsPreview from './LeadsPreview';
 import TeamPerformance from './TeamPerformance';
 import RankingView from '../shared/RankingView';
 import ScriptsView from '../shared/ScriptsView';
+import UserRegister from './UserRegister';
 
 interface AdminPanelProps {
   allLeads: Lead[];
@@ -25,6 +27,20 @@ export default function AdminPanel({
 }: AdminPanelProps) {
   const [activeTab, setActiveTab] = useState('leads');
 
+  // Carregar estatísticas do Supabase quando o componente montar
+  useEffect(() => {
+    const loadTeamStats = async () => {
+      try {
+        const statsFromSupabase = await getTeamStatsFromSupabase();
+        setTeamStats(statsFromSupabase);
+      } catch (error) {
+        console.error('Erro ao carregar estatísticas da equipe:', error);
+      }
+    };
+
+    loadTeamStats();
+  }, [setTeamStats]);
+
   const handleDistributeLeads = (vendor: string, quantity: number) => {
     const availableLeads = Math.min(quantity, allLeads.length);
     const leadsToDistribute = allLeads.slice(0, availableLeads);
@@ -42,14 +58,19 @@ export default function AdminPanel({
     
     // Update team stats
     const updatedTeamStats = { ...teamStats };
+    if (!updatedTeamStats[vendor]) {
+      updatedTeamStats[vendor] = { received: 0, completed: 0, totalValue: 0 };
+    }
     updatedTeamStats[vendor].received += leadsToDistribute.length;
-    setTeamStats(updatedTeamStats);
     
     // Calculate total value
     const totalValue = leadsToDistribute.reduce((sum, lead) => {
       const numValue = parseFloat(lead.value.replace(',', '.'));
       return sum + (isNaN(numValue) ? 0 : numValue);
     }, 0);
+    
+    updatedTeamStats[vendor].totalValue += totalValue;
+    setTeamStats(updatedTeamStats);
     
     // Show success notification
     const vendorName = require('../../data/users').users.find((u: any) => u.username === vendor)?.name || vendor;
@@ -70,7 +91,8 @@ export default function AdminPanel({
   const tabs = [
     { id: 'leads', label: 'Gestão de Leads' },
     { id: 'ranking', label: 'Ranking de Vendas' },
-    { id: 'scripts', label: 'Scripts de Vendas' }
+    { id: 'scripts', label: 'Scripts de Vendas' },
+    { id: 'register', label: 'Cadastrar Usuários' } // Nova aba
   ];
 
   return (
@@ -82,11 +104,11 @@ export default function AdminPanel({
             <li key={tab.id} className="mr-2">
               <button
                 onClick={() => setActiveTab(tab.id)}
-                className={`inline-block p-4 border-b-2 ${
-                  activeTab === tab.id
-                    ? 'text-white border-[#a855f7]'
-                    : 'text-gray-400 hover:text-white border-transparent hover:border-gray-600'
-                }`}
+                className={`inline-block p-4 border-b-2 rounded-t-lg transition-colors duration-200
+                  ${activeTab === tab.id
+                    ? 'bg-white text-black border-[#a855f7]'
+                    : 'bg-black text-white border-transparent'}
+                `}
               >
                 {tab.label}
               </button>
@@ -125,6 +147,15 @@ export default function AdminPanel({
       {activeTab === 'scripts' && (
         <div className="bg-[#121212] rounded-lg p-6 mb-6">
           <ScriptsView />
+        </div>
+      )}
+
+      {activeTab === 'register' && (
+        <div className="bg-[#121212] rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-bold mb-4 text-white border-b border-gray-800 pb-2">
+            Cadastro de Usuários
+          </h2>
+          <UserRegister />
         </div>
       )}
     </div>

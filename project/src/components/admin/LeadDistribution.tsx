@@ -4,6 +4,7 @@ import { Lead } from '../../types';
 import { users } from '../../data/users';
 import { parseCSV } from '../../utils/csvParser';
 import { showNotification } from '../../utils/notifications';
+import { saveLeadsToSupabase } from '../../utils/supabaseLeads';
 
 interface LeadDistributionProps {
   allLeads: Lead[];
@@ -40,7 +41,7 @@ export default function LeadDistribution({ allLeads, setAllLeads, onDistributeLe
     }
   };
 
-  const handleDistribute = () => {
+  const handleDistribute = async () => {
     if (!selectedVendor) {
       showNotification('Selecione um vendedor!', 'error');
       return;
@@ -51,7 +52,25 @@ export default function LeadDistribution({ allLeads, setAllLeads, onDistributeLe
       return;
     }
     
-    onDistributeLeads(selectedVendor, leadQuantity);
+    // Pegar os leads a serem distribuídos
+    const leadsToDistribute = allLeads.slice(0, leadQuantity);
+    
+    // Adicionar o campo assigned_to aos leads
+    const leadsWithAssignment = leadsToDistribute.map(lead => ({
+      ...lead,
+      assigned_to: selectedVendor
+    }));
+    
+    // Salvar no Supabase
+    const result = await saveLeadsToSupabase(leadsWithAssignment, selectedVendor);
+    
+    if (result.success) {
+      // Chamar a função de distribuição local
+      onDistributeLeads(selectedVendor, leadQuantity);
+      showNotification('Leads distribuídos e salvos no banco de dados!', 'success');
+    } else {
+      showNotification(`Erro ao salvar leads: ${result.error}`, 'error');
+    }
   };
 
   const vendorOptions = users.filter(user => user.role === 'user');

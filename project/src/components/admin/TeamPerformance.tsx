@@ -27,6 +27,17 @@ export default function TeamPerformance({ teamStats }: TeamPerformanceProps) {
                 <span className="text-[#22c55e] font-semibold">{stats.completed} vendas</span>
               </div>
               <div className="text-xs text-gray-400 mb-2">{username}</div>
+              
+              {/* Informações de leads e valor */}
+              <div className="flex justify-between items-center mb-2 text-sm">
+                <span className="text-blue-400">
+                  📊 {stats.received} leads recebidos
+                </span>
+                <span className="text-yellow-400">
+                  💰 R$ {stats.totalValue?.toFixed(2).replace('.', ',') || '0,00'}
+                </span>
+              </div>
+              
               <div className="w-full bg-gray-800 rounded-full h-2.5">
                 <div 
                   className="bg-[#22c55e] h-2.5 rounded-full transition-all duration-500"
